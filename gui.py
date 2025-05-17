@@ -8,6 +8,7 @@ from scraper import get_systems, fetch_games, BASE_URLS
 import urllib.parse
 import re
 import os
+from libretrodb import get_metadata_for_rom
 
 ITEMS_PER_PAGE = 50
 ROMS_BASE_DIR = "/home/ROMs"
@@ -177,7 +178,29 @@ class MyrientScraperGUI:
         if selected:
             item = self.tree.item(selected)
             game_name = item["values"][0]
-            messagebox.showinfo("Download", f"Would download: {game_name}")
+            # Try to get system name for .dat lookup
+            system_display = self.system_var.get()
+            # Try to get metadata from Libretro DB (by name only, since we don't have a local file)
+            # Use the system_display as the .dat file name (user may need to adjust for exact match)
+            try:
+                metadata = None
+                # Try to get metadata by name (simulate as if filename is the game name)
+                metadata = get_metadata_for_rom(game_name, system_display)
+            except Exception as e:
+                metadata = None
+                logging.error(f"LibretroDB lookup failed: {e}")
+            # Build details string
+            details = f"Game: {game_name}\n"
+            if metadata:
+                details += f"Canonical Name: {metadata.get('description', '')}\n"
+                details += f"Year: {metadata.get('year', '')}\n"
+                details += f"Manufacturer: {metadata.get('manufacturer', '')}\n"
+                details += f"CRC: {metadata.get('crc', '')}\n"
+                details += f"MD5: {metadata.get('md5', '')}\n"
+                details += f"SHA1: {metadata.get('sha1', '')}\n"
+            else:
+                details += "No Libretro metadata found."
+            messagebox.showinfo("Game Details", details)
 
     def download_selected(self):
         logging.info("download_selected called")
